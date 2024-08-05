@@ -30,28 +30,25 @@ with DAG(
     max_active_tasks=3,
     description='movie_extract9_12',
    # schedule_interval=timedelta(days=1),
-    schedule="0 18 * * *",
+    schedule="30 1 * * *",
     start_date=datetime(2016, 9, 1),
-    end_date=datetime(2016, 9, 3),
+    end_date=datetime(2017, 12, 1),
     catchup=True,
     tags=['movie', '2016', 'extract9_12'],
 ) as dag:
     
-    extract = "git+https://github.com/test-Esther/extract@d2.0.0/extract9_12"
-
-
     #def pic():
     #    from extract.icebreaking import pic
     #   pic()
 
-    def branch_fun(ds_nodash):
-        import os
-        home_dir = os.path.expanduser("~")
-        path = os.path.join(home_dir, f"tmp/team_parquet/load_dt={ds_nodash}")
-        if os.path.exists(path):
-            return rm_dir.task_id
-        else:
-            return "get.start"
+    #def branch_fun(ds_nodash):
+    #   import os
+    #    home_dir = os.path.expanduser("~")
+     #   path = os.path.join(home_dir, f"tmp/team_parquet/load_dt={ds_nodash}")
+      #  if os.path.exists(path):
+       #     return rm_dir.task_id
+       # else:
+       #     return "get.data"
 
 
     def get_data(ds_nodash):
@@ -75,21 +72,23 @@ with DAG(
     def save_data(ds_nodash):
         from extract.extract_9_12 import apply_type2df
         df = apply_type2df(load_dt=ds_nodash)
-
+        
+        print(df.head(2))
         # 개봉일 기준 그룹핑 누적 관객수 합
         #g = df.groupby('movieNm')
         #sum_df = g.agg({'salesAcc': 'sum'}).reset_index()
         #print(sum_df)
-        g = df.groupby('movieNm').agg({'salesAcc': 'sum'}).reset_index()
-        sorted_df = g.sort_values(by='salesAcc', ascending=False)
-        print(sorted_df)
+        # 누적매출액 합 기준으로 순위 정렬
+        #g = df.groupby('movieNm').agg({'salesAcc': 'sum'}).reset_index()
+        #sorted_df = g.sort_values(by='salesAcc', ascending=False)
+        #print(sorted_df)
 
 
-    branch_op = BranchPythonOperator(
-        task_id="branch.op",
-	    python_callable=branch_fun,
+    #branch_op = BranchPythonOperator(
+     #   task_id="branch.op",
+	  #  python_callable=branch_fun,
         #requirements=[pic_require],
-        ) 
+       # ) 
 
 
     get_data = PythonVirtualenvOperator(
@@ -118,17 +117,13 @@ with DAG(
 
     rm_dir = BashOperator(
 	    task_id='rm.dir',
-	    bash_command='rm -rf ~/tmp/team_parquet/load_dt={{ds_nodash}}'
+	    bash_command="rm -rf ~/tmp/team_parquet/load_dt={{ds_nodash}}"
         )
 
-    get_start = EmptyOperator(task_id='get.start', trigger_rule="all_done")
-    get_end = EmptyOperator(task_id='get.end')
+    #get_start = EmptyOperator(task_id='get.start', trigger_rule="all_done")
+    #get_end = EmptyOperator(task_id='get.end')
 
 
-    start >> branch_op
+    start >> rm_dir >> get_data >> save_data >> end
 
-    branch_op >> rm_dir >> get_start >> get_data
-    branch_op >> get_start >> get_data
-    
-    get_data >> get_end >> save_data >> end
     
