@@ -18,7 +18,7 @@ from airflow.operators.python import (
 import os
 
 with DAG(
-    'movie_e',
+    'Extract1-4',
     # These args will get passed on to each operator
     # You can override them on a per-task basis during operator initialization
     default_args={
@@ -44,7 +44,7 @@ with DAG(
     def branch_fun(ds_nodash):
         import os
         home_dir=os.path.expanduser('~')
-        path=os.path.join(home_dir, f"code/team_jkl/extract/extract_parquet/load_dt={ds_nodash}")
+        path=os.path.join(home_dir, f"~/tmp/team_parquet/")
         if os.path.exists(path):
             return "rm.dir"
         else:
@@ -64,7 +64,7 @@ with DAG(
     get_data = PythonVirtualenvOperator(
         task_id="get.data",
         python_callable=get_data,
-        requirements=["git+https://github.com/test-Esther/extract.git@release/d1.0.0"],
+        requirements=["git+https://github.com/test-Esther/extract.git@release/d2.0.0"],
         system_site_packages=False,
         trigger_rule="one_success"
         )
@@ -74,13 +74,13 @@ with DAG(
         df=apply_type2df(load_dt=ds_nodash)
         print(df.head(10))
         g=df.groupby('openDt')
-        sum_df=g.agg({'audiCnt': 'sum'}).reset_index
+        sum_df=g.agg({'audiCnt': 'sum'}).reset_index()
         print(sum_df)
 
     save_data = PythonVirtualenvOperator(
         task_id="save.data",
         python_callable=save_data,
-        requirements=["git+https://github.com/test-Esther/extract.git@release/d1.0.0"],
+        requirements=["git+https://github.com/test-Esther/extract.git@release/d2.0.0"],
         system_site_packages=False,
         trigger_rule="one_success"
         )
@@ -96,7 +96,7 @@ with DAG(
 
     rm_dir = BashOperator(
 	    task_id='rm.dir',
-	    bash_command='rm -rf ~/tmp/jkl_parquet/load_dt={{ ds_nodash }}'
+	    bash_command='rm -rf ~/tmp/team_parquet/'
         )
 
     #get_start = EmptyOperator(task_id='get.start', trigger_rule="all_done")
@@ -106,7 +106,7 @@ with DAG(
     start >> branch_op
 
     branch_op >> rm_dir >> get_data
-    branch_op >> get_data 
+    branch_op >> get_data >> save_data 
     
     save_data >> end
     
