@@ -30,8 +30,9 @@ with DAG(
 ) as dag:
 
     def get_data(ds_nodash):
-        #from extract.extract_5_8 import save2df
-        #print(df.head(5))
+        from extract.extract_5_8 import save2df
+        df = save2df(ds_nodash)
+        print(df.head(5))
         print("#" * 123)
 
     get_data = PythonVirtualenvOperator(
@@ -46,6 +47,8 @@ with DAG(
     def save_data(ds_nodash):
         from extract.extract_5_8 import apply_type2df
         df=apply_type2df(load_dt=ds_nodash)
+        g=df.groupby('openDt')
+        sum_df=g.agg({'audiCnt': 'sum'}).reset_index()
 
     save_data = PythonVirtualenvOperator(
             task_id='save.data',
