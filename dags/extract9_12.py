@@ -94,7 +94,7 @@ with DAG(
     get_data = PythonVirtualenvOperator(
         task_id="get.data",
         python_callable=get_data,
-        requirements=["git+https://github.com/test-Esther/extract@d2.0.0/extract9_12"],
+        requirements=["git+https://github.com/test-Esther/extract@release/d2.0.0/extract9_12"],
         system_site_packages=False,
         trigger_rule="one_success"
         )
@@ -102,7 +102,7 @@ with DAG(
     save_data = PythonVirtualenvOperator(
         task_id="save.data",
         python_callable=save_data,
-        requirements=["git+https://github.com/test-Esther/extract@d2.0.0/extract9_12"],
+        requirements=["git+https://github.com/test-Esther/extract@release/d2.0.0/extract9_12"],
         system_site_packages=False,
         )
 
