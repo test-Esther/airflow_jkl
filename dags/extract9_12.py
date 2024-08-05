@@ -47,9 +47,9 @@ with DAG(
     def branch_fun(ds_nodash):
         import os
         home_dir = os.path.expanduser("~")
-        path = os.path.join(home_dir, f"/tmp/team_parquet/load_dt={ds_nodash}")
+        path = os.path.join(home_dir, f"tmp/team_parquet/load_dt={ds_nodash}")
         if os.path.exists(path):
-            return 'rm.dir'
+            return rm_dir.task_id
         else:
             return "get.start"
 
@@ -77,9 +77,12 @@ with DAG(
         df = apply_type2df(load_dt=ds_nodash)
 
         # 개봉일 기준 그룹핑 누적 관객수 합
-        g = df.groupby('openDt')
-        sum_df = g.agg({'audiCnt': 'sum'}).reset_index()
-        print(sum_df)
+        #g = df.groupby('movieNm')
+        #sum_df = g.agg({'salesAcc': 'sum'}).reset_index()
+        #print(sum_df)
+        g = df.groupby('movieNm').agg({'salesAcc': 'sum'}).reset_index()
+        sorted_df = g.sort_values(by='salesAcc', ascending=False)
+        print(sorted_df)
 
 
     branch_op = BranchPythonOperator(
@@ -115,7 +118,7 @@ with DAG(
 
     rm_dir = BashOperator(
 	    task_id='rm.dir',
-	    bash_command='rm -rf ~/tmp/team_parquet/load_dt={{ ds_nodash }}'
+	    bash_command='rm -rf ~/tmp/team_parquet/load_dt={{ds_nodash}}'
         )
 
     get_start = EmptyOperator(task_id='get.start', trigger_rule="all_done")
