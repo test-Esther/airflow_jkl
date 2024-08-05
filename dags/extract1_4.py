@@ -32,9 +32,9 @@ with DAG(
    # schedule_interval=timedelta(days=1),
     schedule="10 2 * * *",
     start_date=datetime(2016, 1, 1),
-    end_date=datetime(2016, 1, 3),
+    end_date=datetime(2016, 5, 1),
     catchup=True,
-    tags=['movie', '2016', 'extract9_12'],
+    tags=['movie', '2016', 'extract1_4'],
 ) as dag:
 
     def pic():
@@ -44,17 +44,25 @@ with DAG(
     def branch_fun(ds_nodash):
         import os
         home_dir=os.path.expanduser('~')
-        path=os.path.join(home_dir, f"~/tmp/team_parquet/")
+        path=os.path.join(home_dir, f"/tmp/team_parquet/")
         if os.path.exists(path):
-            return "rm.dir"
+            return "rm.dir" 
         else:
             return "get.data"
         
-    branch_op = BranchPythonOperator(
-        task_id="branch.op",
-	    python_callable=branch_fun,
+#    branch_op = BranchPythonOperator(
+#        task_id="branch.op",
+#	    python_callable=branch_fun,
         
-        ) 
+#        )
+    rm_dir = BashOperator(
+        task_id='rm.dir',
+        bash_command='rm -rf ~/tmp/team_parquet/load_dt={{ds_nodash}}'
+        )
+
+    get_data_start=EmptyOperator(
+        task_id="get.start"
+            )
 
     def get_data(ds_nodash):
         from extract.extract_1_4 import save2df
@@ -64,10 +72,14 @@ with DAG(
     get_data = PythonVirtualenvOperator(
         task_id="get.data",
         python_callable=get_data,
-        requirements=["git+https://github.com/test-Esther/extract.git@release/d2.0.0"],
+        requirements=["git+https://github.com/test-Esther/extract.git@d2.0.0/extract1-4"],
         system_site_packages=False,
         trigger_rule="one_success"
         )
+
+    get_data_end=EmptyOperator(
+        task_id="get.end"
+            )
 
     def save_data(ds_nodash):
         from extract.extract_1_4 import apply_type2df
@@ -80,7 +92,7 @@ with DAG(
     save_data = PythonVirtualenvOperator(
         task_id="save.data",
         python_callable=save_data,
-        requirements=["git+https://github.com/test-Esther/extract.git@release/d2.0.0"],
+        requirements=["git+https://github.com/test-Esther/extract.git@d2.0.0/extract1-4"],
         system_site_packages=False,
         trigger_rule="one_success"
         )
@@ -94,19 +106,20 @@ with DAG(
                 )
     
 
-    rm_dir = BashOperator(
-	    task_id='rm.dir',
-	    bash_command='rm -rf ~/tmp/team_parquet/'
-        )
+
+
+
+
 
     #get_start = EmptyOperator(task_id='get.start', trigger_rule="all_done")
     #get_end = EmptyOperator(task_id='get.end')
 
 
-    start >> branch_op
+    start >> rm_dir
 
-    branch_op >> rm_dir >> get_data
-    branch_op >> get_data >> save_data 
-    
+    rm_dir >> get_data_start
+
+   
+    get_data_start >> get_data >> get_data_end >> save_data
     save_data >> end
     
