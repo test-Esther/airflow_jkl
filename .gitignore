@@ -4,3 +4,4 @@ standalone_admin_password.txt
 __pycache__
 airflow.db
 *.swp
+airflow.cfg
