@@ -32,18 +32,19 @@ with DAG(
     description='movie_top_kr',
    # schedule_interval=timedelta(days=1),
     schedule="10 2 * * *",
-    start_date=datetime(2016, 1, 1),
-    end_date=datetime(2016, 1, 5),
+    start_date=datetime(2016, 12, 31),
+    end_date=datetime(2017, 1, 2),
     catchup=True,
     tags=['movie', 'top10_in_KR'],
 ) as dag:
 
-    ###REQUIREMENTS=["git+https://github.com/Nicou11/mov_agg@0.5/agg"]
 
     def merge(load_dt):
         import pandas as pd
         read_df = pd.read_parquet('~/tmp/team_parquet')
-        read_df['openDt'] = pd.to_datetime(read_df['openDt'], format='%Y-%m-%d')
+        
+        # 개봉일을 datetime 형식으로 변환
+        read_df['openDt'] = pd.to_datetime(read_df['openDt'], format='%Y-%m-%d', errors='coerce')
         cols = [
             'movieNm', #영화명(국문)을 출력합니다.
             'openDt', #영화의 개봉일을 출력합니다.
@@ -52,8 +53,6 @@ with DAG(
             #'repNationCd', #한국외국영화 유무
                 ]
         df = read_df[cols]
-        # 개봉일을 datetime 형식으로 변환
-        df['openDt'] = pd.to_datetime(df['openDt'], format='%Y%m%d')
 
         # 2016년 9월부터 12월 사이에 개봉한 영화 필터링
         start_date = '2016-01-01'
@@ -68,12 +67,15 @@ with DAG(
         # 중복된 영화명 제거 (가장 높은 매출액을 가진 영화만 남기기)
         top10_list = df_top10.loc[df_top10.groupby('movieNm')['salesAmt'].idxmax()]
 
-        print(top10_list)
+
+            # 결과를 Parquet 파일로 저장
+        output_path = "~/tmp/team_jkl/top10_list.parquet"
+        top10_list.to_parquet(output_path, index=False)
+
+        print(f"Results have been saved to {output_path}")
         # 한국 영화만 필터링
         #df_korean_movies = df_top10[df_top10['repNationCd'] == 'K']  # 'K'은 한국 영화
-
-        #print(df_korean_movies)
-
+        print(top10_list.head(10))
 
     start = EmptyOperator(
         task_id='start'
@@ -83,7 +85,7 @@ with DAG(
     process_movies = PythonVirtualenvOperator(
         task_id='process_movies',
         python_callable=merge,
-        requirements=["git+https://github.com/test-Esther/transform@d3.0.0/trans9_12"],
+        requirements=["git+https://github.com/test-Esther/transform"],
         system_site_packages=False,
         op_kwargs={'load_dt': '{{ ds }}'},  # Pass execution date as load_dt
         )
