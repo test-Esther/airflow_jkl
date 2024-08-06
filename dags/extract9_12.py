@@ -32,7 +32,7 @@ with DAG(
    # schedule_interval=timedelta(days=1),
     schedule="30 1 * * *",
     start_date=datetime(2016, 9, 1),
-    end_date=datetime(2017, 12, 1),
+    end_date=datetime(2017, 1, 1),
     catchup=True,
     tags=['movie', '2016', 'extract9_12'],
 ) as dag:

@@ -24,9 +24,9 @@ with DAG(
     description='movie',
     schedule="10 2 * * *",
     start_date=datetime(2016, 5, 1),
-    end_date=datetime(2016, 8, 31),
+    end_date=datetime(2016, 9, 1),
     catchup=True,
-    tags=['project', 'movie', '2016'],
+    tags=['project', 'movie', '2016', '5-8'],
 ) as dag:
 
     def get_data(ds_nodash):
