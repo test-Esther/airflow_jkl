@@ -41,7 +41,7 @@ with DAG(
         task_id='type.cast',
         python_callable=fun_transform,
         system_site_packages=False,
-        requirements="git+https://github.com/test-Esther/transform.git@d3.0.0/transfer1-4"
+        requirements="git+https://github.com/test-Esther/transform.git@d3.0.0/transfer1-4",
         trigger_rule='all_done'
             )
 
