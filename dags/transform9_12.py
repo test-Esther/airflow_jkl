@@ -54,21 +54,20 @@ with DAG(
                 ]
         df = read_df[cols]
 
-        # 2016년 9월부터 12월 사이에 개봉한 영화 필터링
+        # 2016년 1월부터 12월 사이에 개봉한 영화 필터링
         start_date = '2016-01-01'
         end_date = '2016-12-31'
         df_filtered = df[(df['openDt'] >= start_date) & (df['openDt'] <= end_date)]
 
-        # 매출액을 기준으로 상위 10개 영화 추출     # 매출액을 숫자형으로 변환
         df_filtered['salesAmt'] = pd.to_numeric(df_filtered['salesAmt'], errors='coerce')
 
-        df_top10 = df_filtered.sort_values(by='salesAmt', ascending=False).head(10)
-
         # 중복된 영화명 제거 (가장 높은 매출액을 가진 영화만 남기기)
-        top10_list = df_top10.loc[df_top10.groupby('movieNm')['salesAmt'].idxmax()]
+        df_unique = df_filtered.loc[df_filtered.groupby('movieNm')['salesAmt'].idxmax()]
+        
+        # 매출액을 기준으로 상위 10개 영화 추출     # 매출액을 숫자형으로 변환
+        top10_list = df_unique.sort_values(by='salesAmt', ascending=False).head(10)
 
-
-            # 결과를 Parquet 파일로 저장
+        # 결과를 Parquet 파일로 저장
         output_path = "~/tmp/team_jkl/top10_list.parquet"
         top10_list.to_parquet(output_path, index=False)
 
