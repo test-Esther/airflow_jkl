@@ -1,0 +1,96 @@
+from datetime import datetime, timedelta
+from textwrap import dedent
+#from pprint import pprint as pp
+
+from airflow import DAG
+import requests
+
+# Operators; we need this to operate!
+from airflow.operators.bash import BashOperator
+from airflow.operators.empty import EmptyOperator
+from airflow.operators.python import (
+    ExternalPythonOperator,
+    PythonOperator,
+    PythonVirtualenvOperator,
+    is_venv_installed,
+    BranchPythonOperator
+)
+import os    
+
+
+with DAG(
+    'movie_top_kr',
+    # These args will get passed on to each operator
+    # You can override them on a per-task basis during operator initialization
+    default_args={
+        'depends_on_past': False,
+        'retries': 1,
+        'retry_delay': timedelta(seconds=3)
+    },
+    max_active_runs=5,
+    max_active_tasks=10,
+    description='movie_top_kr',
+   # schedule_interval=timedelta(days=1),
+    schedule="10 2 * * *",
+    start_date=datetime(2016, 1, 1),
+    end_date=datetime(2016, 1, 5),
+    catchup=True,
+    tags=['movie', 'top10_in_KR'],
+) as dag:
+
+    ###REQUIREMENTS=["git+https://github.com/Nicou11/mov_agg@0.5/agg"]
+
+    def merge(load_dt):
+        import pandas as pd
+        read_df = pd.read_parquet('~/tmp/team_parquet')
+        read_df['openDt'] = pd.to_datetime(read_df['openDt'], format='%Y-%m-%d')
+        cols = [
+            'movieNm', #영화명(국문)을 출력합니다.
+            'openDt', #영화의 개봉일을 출력합니다.
+            'salesAmt', #해당일의 매출액을 출력합니다.
+            #'load_dt', # 입수일자
+            #'repNationCd', #한국외국영화 유무
+                ]
+        df = read_df[cols]
+        # 개봉일을 datetime 형식으로 변환
+        df['openDt'] = pd.to_datetime(df['openDt'], format='%Y%m%d')
+
+        # 2016년 9월부터 12월 사이에 개봉한 영화 필터링
+        start_date = '2016-01-01'
+        end_date = '2016-12-31'
+        df_filtered = df[(df['openDt'] >= start_date) & (df['openDt'] <= end_date)]
+
+        # 매출액을 기준으로 상위 10개 영화 추출     # 매출액을 숫자형으로 변환
+        df_filtered['salesAmt'] = pd.to_numeric(df_filtered['salesAmt'], errors='coerce')
+
+        df_top10 = df_filtered.sort_values(by='salesAmt', ascending=False).head(10)
+
+        # 중복된 영화명 제거 (가장 높은 매출액을 가진 영화만 남기기)
+        top10_list = df_top10.loc[df_top10.groupby('movieNm')['salesAmt'].idxmax()]
+
+        print(top10_list)
+        # 한국 영화만 필터링
+        #df_korean_movies = df_top10[df_top10['repNationCd'] == 'K']  # 'K'은 한국 영화
+
+        #print(df_korean_movies)
+
+
+    start = EmptyOperator(
+        task_id='start'
+        )
+
+
+    process_movies = PythonVirtualenvOperator(
+        task_id='process_movies',
+        python_callable=merge,
+        requirements=["git+https://github.com/test-Esther/transform@d3.0.0/trans9_12"],
+        system_site_packages=False,
+        op_kwargs={'load_dt': '{{ ds }}'},  # Pass execution date as load_dt
+        )
+    
+    end = EmptyOperator(
+        task_id='end'
+        )
+    
+    # Define task dependencies
+    start >> process_movies >> end
