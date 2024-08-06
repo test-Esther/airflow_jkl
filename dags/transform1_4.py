@@ -31,7 +31,7 @@ with DAG(
             tasks.append(task)
         return tuple(tasks)
 
-    def fun_transform(task_name, **params):
+    def fun_transform(**params):
         load_dt=params['ds_nodash']
         from transform.transform1_4 import merge
         df=merge(load_dt)
